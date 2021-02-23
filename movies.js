@@ -1,14 +1,18 @@
-window.addEventListener('DOMContentLoaded', async function(event) {
+// window.addEventListener('DOMContentLoaded', async function(event) {
+firebase.auth().onAuthStateChanged(async function(user) {
+
+if (user) {
+
     let db = firebase.firestore()
-    let apiKey = 'your TMDB API key'
-    let response = await fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=en-US`)
+    let response = await fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=6947ffdacb44e290172ab8e8d7f4235e&language=en-US`)
     let json = await response.json()
     let movies = json.results
     console.log(movies)
     
+    // loop through all movies 
     for (let i=0; i<movies.length; i++) {
       let movie = movies[i]
-      let docRef = await db.collection('watched').doc(`${movie.id}`).get()
+      let docRef = await db.collection('watched').doc(`${movie.id}-${user.uid}`).get()
       let watchedMovie = docRef.data()
       let opacityClass = ''
       if (watchedMovie) {
@@ -26,21 +30,52 @@ window.addEventListener('DOMContentLoaded', async function(event) {
         event.preventDefault()
         let movieElement = document.querySelector(`.movie-${movie.id}`)
         movieElement.classList.add('opacity-20')
-        await db.collection('watched').doc(`${movie.id}`).set({})
+        await db.collection('watched').doc(`${movie.id}-${user.uid}`).set({})
       }) 
+    } // end of For loop
+
+    console.log(user)
+    let userName = user.displayName
+
+    // signout button:
+    document.querySelector('.sign-in-or-sign-out').innerHTML = `
+    Signed in as ${userName}
+    <button class="text-pink-500 underline sign-out">Sign Out</button>` 
+
+    document.querySelector('.sign-out').addEventListener('click', function(event) {
+        console.log('sign out clicked')
+        firebase.auth().signOut()
+        document.location.href = 'movies.html'
+    })
+
+    } // end of If statement
+    else {
+        // Initializes FirebaseUI Auth
+        let ui = new firebaseui.auth.AuthUI(firebase.auth())
+
+        // FirebaseUI configuration
+        let authUIConfig = {
+            signInOptions: [
+            firebase.auth.EmailAuthProvider.PROVIDER_ID
+            ],
+            signInSuccessUrl: 'movies.html'
+        }
+
+        // Starts FirebaseUI Auth
+        ui.start('.sign-in-or-sign-out', authUIConfig)
     }
-  })
+  }) // end of original function
   
   // Goal:   Refactor the movies application from last week, so that it supports
   //         user login and each user can have their own watchlist.
   
   // Start:  Your starting point is one possible solution for last week's homework.
   
-  // Step 1: Add your Firebase configuration to movies.html, along with the
+  // Step 1: [✅] Add your Firebase configuration to movies.html, along with the
   //         (provided) script tags for all necessary Firebase services – i.e. Firebase
   //         Auth, Firebase Cloud Firestore, and Firebase UI for Auth; also
   //         add the CSS file for FirebaseUI for Auth.
-  // Step 2: Change the main event listener from DOMContentLoaded to 
+  // Step 2: [✅] Change the main event listener from DOMContentLoaded to 
   //         firebase.auth().onAuthStateChanged and include conditional logic 
   //         shows a login UI when signed, and the list of movies when signed
   //         in. Use the provided .sign-in-or-sign-out element to show the
@@ -48,7 +83,7 @@ window.addEventListener('DOMContentLoaded', async function(event) {
   //         in as <name>" along with a link to "Sign out". Ensure that a document
   //         is set in the "users" collection for each user that signs in to 
   //         your application.
-  // Step 3: Setting the TMDB movie ID as the document ID on your "watched" collection
+  // Step 3: [✅] Setting the TMDB movie ID as the document ID on your "watched" collection
   //         will no longer work. The document ID should now be a combination of the
   //         TMDB movie ID and the user ID indicating which user has watched. 
   //         This "composite" ID could simply be `${movieId}-${userId}`. This should 
